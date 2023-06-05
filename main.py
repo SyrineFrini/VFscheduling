@@ -36,6 +36,14 @@ def solve_crop_optimization(I, R, P, T, theta, W, A, Q):
                     X_irpt[i, p, r, (t - z + T) ] for i in range(1, I+1) for z in range(0, theta[i-1]-1) if (t - z) <= 0)
                 model.addConstr(lhs <= 1)
 
+
+    # Add constraint 3: Maintenance period for each shelf
+    for r in range(1, R+1):
+        for p in range(1, P+1):
+            lhs3 = gp.quicksum(X_irpt[3, p, r, t] for t in range(1, T+1))
+            model.addConstr(lhs3 == 1)
+
+
     # Optimize the model
     model.optimize()
 
@@ -51,15 +59,15 @@ def solve_crop_optimization(I, R, P, T, theta, W, A, Q):
     return solution
 
 # Define the data
-I = 2  # Total number of crops
+I = 3  # Total number of crops // the third one is MAITENANCE
 R = 4  # Total number of shelves
 P = 3  # Total number of towers
 T = 5  # Total time horizon (weeks)
 H = 2  # Total number of crop families
-theta = [2, 3]  # Cultivation time of each crop in weeks
+theta = [2, 3, 1]  # Cultivation time of each crop in weeks
 W = [[1, 2, 3, 4], [2, 3, 4, 5], [3, 4, 5, 6]]  # Cultivation area of each shelf in each tower
-A = [[1.5, 2.0, 2.5, 3.0, 3.5], [2.0, 2.5, 3.0, 3.5, 4.0]]  # Price per kilogram of each crop at each week
-Q = [0.8, 0.9]  # Harvested quantity of each crop per cultivation area
+A = [[1.5, 2.0, 2.5, 3.0, 3.5], [2.0, 2.5, 3.0, 3.5, 4.0], [0, 0, 0, 0, 0]]  # Price per kilogram of each crop at each week
+Q = [0.8, 0.9, 0]  # Harvested quantity of each crop per cultivation area
 
 # Solve the crop optimization problem
 solution = solve_crop_optimization(I, R, P, T, theta, W, A, Q)

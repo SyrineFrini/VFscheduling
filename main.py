@@ -7,34 +7,34 @@ def solve_crop_optimization(I, R, P, T, theta, W, A, Q):
 
     # Define the decision variables
     X_irpt = {}
-    for i in range(I):
-        for p in range(P):
-            for r in range(R):
-                for t in range(T):
+    for i in range(1, I+1):
+        for p in range(1, P+1):
+            for r in range(1, R+1):
+                for t in range(1, T+1):
                     X_irpt[i, p, r, t] = model.addVar(vtype=GRB.BINARY, name=f"X_{i}_{p}_{r}_{t}")
 
     # Set the objective function
-    objective = gp.quicksum(X_irpt[i, p, r, t] * W[p][r] * A[i][t] * Q[i]
-                            for i in range(I) for p in range(P) for r in range(R) for t in range(T))
+    objective = gp.quicksum(X_irpt[i, p, r, t] * W[p-1][r-1] * A[i-1][t-1] * Q[i-1]
+                            for i in range(1, I+1) for p in range(1, P+1) for r in range(1, R+1) for t in range(1, T+1))
     model.setObjective(objective, GRB.MAXIMIZE)
 
     # Add constraint 1
-    for i in range(I):
-        for t in range(T):
-            lhs = gp.quicksum(X_irpt[i, p, r, t] * W[p][r] for p in range(P) for r in range(R))
-            rhs = gp.quicksum(W[p][r] for p in range(P) for r in range(R))
+    for i in range(1, I+1):
+        for t in range(1, T+1):
+            lhs = gp.quicksum(X_irpt[i, p, r, t] * W[p-1][r-1] for p in range(1, P+1) for r in range(1, R+1))
+            rhs = gp.quicksum(W[p-1][r-1] for p in range(1, P+1) for r in range(1, R+1))
             model.addConstr(lhs <= rhs)
 
-    # Add constraint 2
-    for t in range(T):
-        for p in range(P):
-            for r in range(R):
-                if t > 0:
-                    lhs1 = gp.quicksum(X_irpt[i, p, r, t - z] for i in range(I) for z in range(theta[i]-1))
-                    model.addConstr(lhs1 <= 1)
-                else:
-                    lhs2 = gp.quicksum(X_irpt[i, p, r, (t - z + T) % T] for i in range(I) for z in range(theta[i]-1))
-                    model.addConstr(lhs2 <= 1)
+    for t in range(1, T+1):
+        for p in range(1, P+1):
+            for r in range(1, R+1):
+                lhs = gp.quicksum(
+                    X_irpt[i, p, r, t - z] for i in range(1, I+1) for z in range(0, theta[i-1]-1) if (t - z) > 0)
+                model.addConstr(lhs <= 1)
+
+                lhs = gp.quicksum(
+                    X_irpt[i, p, r, (t - z + T) ] for i in range(1, I+1) for z in range(0, theta[i-1]-1) if (t - z) <= 0)
+                model.addConstr(lhs <= 1)
 
     # Optimize the model
     model.optimize()
@@ -42,10 +42,10 @@ def solve_crop_optimization(I, R, P, T, theta, W, A, Q):
     # Retrieve the optimal solution
     solution = {}
     if model.status == GRB.OPTIMAL:
-        for i in range(I):
-            for p in range(P):
-                for r in range(R):
-                    for t in range(T):
+        for i in range(1, I+1):
+            for p in range(1, P+1):
+                for r in range(1, R+1):
+                    for t in range(1, T+1):
                         solution[f"X_{i}_{p}_{r}_{t}"] = X_irpt[i, p, r, t].x
 
     return solution

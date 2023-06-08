@@ -125,7 +125,6 @@ def solve_crop_optimization(I, R, P, T, theta, W, A, Q, S, C, Z, G, F):
                             X_irpt[i, p1, r1, t - z + T] + X_irpt[i, p2, r2, t - z + T]  if (t - z) <= 0 else X_irpt[i, p1, r1, t - z ] + X_irpt[i, p2, r2, t - z]
                             for i in F[h]
                             for z in range(0, theta[i]+1))
-
                 model.addConstr(lhs7 <= 1)
 
 

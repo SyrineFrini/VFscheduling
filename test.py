@@ -4,6 +4,48 @@ import numpy as np
 from gurobipy import GRB
 import matplotlib.pyplot as plt
 
+def plot_tower_content(solution, I, R, P, T, t):
+    # Create a list of crops
+    crops = ["Crop {}".format(i) for i in range(1, I + 1)]
+
+    # Create a dictionary to store the content of each tower at the given time step
+    tower_content = {}
+
+    for p in range(1, P + 1):
+        tower_content[p] = [[] for _ in range(R)]
+
+        # Iterate over the shelves
+        for r in range(1, R + 1):
+            # Check if a crop is planted at the current position (p, r, t)
+            for i in range(1, I + 1):
+                if solution.get("X_{}_{}_{}_{}".format(i, p, r, t), 0) == 1:
+                    tower_content[p][r - 1].append(crops[i - 1])
+
+    # Plot the tower content
+    for p, content in tower_content.items():
+        fig, ax = plt.subplots(figsize=(6, 4))
+        shelf_labels = ["Shelf {}".format(r + 1) for r in range(R)]
+        shelf_heights = np.arange(R)
+
+        for r in range(R):
+            crops_planted = content[r]
+            if crops_planted:
+                crop_colors = [plt.cm.get_cmap('tab20')(crops.index(crop) / I) for crop in crops_planted]
+                crop_names = [crop.split()[1] for crop in crops_planted]  # Extract the crop name from "Crop X"
+                ax.barh(r, 1, align='center', height=0.5, color=crop_colors)
+                for i, name in enumerate(crop_names):
+                    ax.text(0.5, r, name, ha='center', va='center', color='white', fontweight='bold')
+
+        ax.set_xlim(0, 1)
+        ax.set_ylim(-0.5, R - 0.5)
+        ax.set_yticks(shelf_heights)
+        ax.set_yticklabels(shelf_labels)
+        ax.set_xticklabels(['0', '1'])  # Set x-axis tick labels to '0' and '1'
+        ax.set_title("Tower {} - Time Step {}".format(p, t))
+        ax.grid(True, axis='x')
+
+        plt.show()
+
 def generate_gantt_chart(solution, I, R, P, T, theta):
     # Create a list of crops
     crops = ["Crop {}".format(i) for i in range(1, I + 1)]
@@ -108,7 +150,6 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F):
     # Add Constraint 4: Sun categories
     for t in range(1, T + 1):
         for p in range(1, P + 1):
-
             lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[2]) * gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[3])
             lhs5 = gp.quicksum(X_irpt[i, p, r, t] for i in C[2] for r in S[3])
             lhs6 = gp.quicksum(X_irpt[i, p, r, t] for i in C[3] for r in S[1])
@@ -169,7 +210,6 @@ T = 15
 theta = {}
 for i in range(1, I+1):
     theta[i] = crops_df["Cultivation time"][i]
-
 print(theta)
 
 H = crops_df['Family'].to_list()
@@ -183,10 +223,10 @@ for p in range(1, P+1):
 A = {}
 for i in range(1, I+1):
     A[i] = {}
-    for t in range(1, T+1):
+    for t in range(1, 10):
         A[i][t] = crops_df["Average Price in Summer (€/kg)"][i]
-    #for t in range(31, T+1):
-    #    A[i][t] = crops_df["Average Price in Summer (€/kg)"][i]
+    for t in range(10, T+1):
+        A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
 print(A)
 
 Q = {}
@@ -245,3 +285,4 @@ for var, val in solution.items():
     print(f"{var} = {val}")
 
 generate_gantt_chart(solution, I, R, P, T, theta)
+plot_tower_content(solution, I, R, P, T, 10)

@@ -36,11 +36,11 @@ def plot_tower_content(solution, I, R, P, T, t):
                 for i, name in enumerate(crop_names):
                     ax.text(0.5, r, name, ha='center', va='center', color='white', fontweight='bold')
 
-        ax.set_xlim(0, 1)
+        ax.set_xticks([0, 1])  # Set x-axis ticks to 0 and 1 only
+        ax.set_xticklabels(['0', '1'])  # Set x-axis tick labels to '0' and '1'
         ax.set_ylim(-0.5, R - 0.5)
         ax.set_yticks(shelf_heights)
         ax.set_yticklabels(shelf_labels)
-        ax.set_xticklabels(['0', '1'])  # Set x-axis tick labels to '0' and '1'
         ax.set_title("Tower {} - Time Step {}".format(p, t))
         ax.grid(True, axis='x')
 

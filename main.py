@@ -1,51 +1,10 @@
-import gurobipy as gp
-from gurobipy import GRB
-import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
 
-def generate_gantt_chart(solution, I, R, P, T, theta):
-    # Create a list of crops
-    crops = ["Crop {}".format(i) for i in range(1, I+1)]
-
-    # Create a dictionary to store the job schedule for each tower
-    tower_schedules = {}
-
-    # Create a color map to assign colors to crops
-    color_map = {crops[i]: plt.cm.get_cmap('tab20')(i / I) for i in range(I)}
-
-    for p in range(1, P+1):
-        # Initialize the schedule for the current tower
-        tower_schedule = [[] for _ in range(R)]
-
-        # Iterate over the shelves and time periods
-        for r in range(1, R+1):
-            for t in range(1, T+1):
-                # Check if a crop is planted at the current position (p, r, t)
-                for i in range(1, I+1):
-                    if solution.get("X_{}_{}_{}_{}".format(i, p, r, t), 0) == 1:
-                        crop_length = theta[i]
-                        crop_start = ((t) % T)  # Adjust start time if rotation is needed
-                        tower_schedule[r-1].append((crop_start, crop_length, crops[i-1]))
-
-        # Store the schedule for the current tower
-        tower_schedules[p] = tower_schedule
-
-    # Plot the Gantt chart for each tower separately
-    for p, tower_schedule in tower_schedules.items():
-        fig, ax = plt.subplots(figsize=(10, 5))
-
-        for r in range(R):
-            for job in tower_schedule[r]:
-                color = color_map[job[2]]
-                ax.barh(r, job[1], align='center', height=0.5, left=job[0], color=color)
-                ax.text(job[0] + job[1] / 2, r + 0.25, job[2], ha='center', va='center')
-
-            ax.set_yticks(range(R))
-            ax.set_yticklabels(["Shelf {}".format(r+1) for r in range(R)])
-            ax.set_xlabel("Time")
-            ax.set_title("Tower {}".format(p))
-
-        plt.show()
-
+from model.model_MILP import solve_crop_optimization
+from model.heuristic_localsearch import solve_crop_optimization_heuristic
+from plot.plotting_functions import plot_tower_content
+from plot.plotting_functions import generate_gantt_chart
 
 def get_adjacent_tuples(tuples):
     adjacent_tuples = []
@@ -57,121 +16,78 @@ def get_adjacent_tuples(tuples):
 
     return adjacent_tuples
 
-def solve_crop_optimization(I, R, P, T, theta, W, A, Q, S, C, Z, G, F):
-    # Create a new model
-    model = gp.Model("crop_optimization")
+# Data Processing
 
-    # Define the decision variables
-    X_irpt = {}
-    for i in range(1, I+1):
-        for p in range(1, P+1):
-            for r in range(1, R+1):
-                for t in range(1, T+1):
-                    X_irpt[i, p, r, t] = model.addVar(vtype=GRB.BINARY, name=f"X_{i}_{p}_{r}_{t}")
+crops_df = pd.read_excel("./input/Crops.xlsx")
+crops_df.index = np.arange(1, len(crops_df) + 1)
 
-    # Set the objective function
-    objective = gp.quicksum(X_irpt[i, p, r, t] * W[p][r-1] * A[i][t-1] * Q[i]
-                            for i in range(1, I+1) for p in range(1, P+1) for r in range(1, R+1) for t in range(1, T+1))
-    model.setObjective(objective, GRB.MAXIMIZE)
-
-    # Add constraint 1
-    for i in range(1, I+1):
-        for t in range(1, T+1):
-            lhs = gp.quicksum(X_irpt[i, p, r, t] * W[p][r-1] for p in range(1, P+1) for r in range(1, R+1))
-            rhs = gp.quicksum(W[p][r-1] for p in range(1, P+1) for r in range(1, R+1))
-            model.addConstr(lhs <= rhs)
-
-    for t in range(1, T + 1):
-        for p in range(1, P + 1):
-            for r in range(1, R + 1):
-                lhs_1 = gp.quicksum(
-                    X_irpt[i, p, r, t - z + T] if (t - z) <= 0 else X_irpt[i, p, r, t - z]
-                    for i in range(1, I + 1)
-                    for z in range(0, theta[i])
-                )
-                model.addConstr(lhs_1 <= 1)
-
-
-
-
-    # Add constraint 3: Maintenance period for each shelf
-    for r in range(1, R+1):
-       for p in range(1, P+1):
-            lhs3 = gp.quicksum(X_irpt[4, p, r, t] for t in range(1, T+1))
-            model.addConstr(lhs3 == 1)
-
-    # Add Constraint 4: Sun categories
-    for t in range(1,T+1):
-        for p in range(1, P+1):
-            lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[2]) * gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[3])
-            lhs5 = gp.quicksum(X_irpt[i, p, r, t] for i in C[2] for r in S[3])
-            lhs6 = gp.quicksum(X_irpt[i, p, r, t] for i in C[3] for r in S[1])
-            model.addConstr(lhs4 == 0)
-            model.addConstr(lhs5 == 0)
-            model.addConstr(lhs6 == 0)
-
-    #Constraint 5: shelves height
-    for i in range(1, I + 1):
-        for t in range(1, T + 1):
-            for p in range(1, P + 1):
-                for r in range(1, R + 1):
-                    model.addConstr(Z[i] * X_irpt[i, p, r, t] <= G[p, r])
-
-
-    #constraint 6:
-    for h in range(1, H+1):
-        for t in range(1, T+1):
-            for (p1, r1, p2, r2) in adjacent_tuples:
-                lhs7 = gp.quicksum(
-                            X_irpt[i, p1, r1, t - z + T] + X_irpt[i, p2, r2, t - z + T]  if (t - z) <= 0 else X_irpt[i, p1, r1, t - z ] + X_irpt[i, p2, r2, t - z]
-                            for i in F[h]
-                            for z in range(0, theta[i]))
-                model.addConstr(lhs7 <= 1)
-
-
-    # Optimize the model
-    model.optimize()
-
-    # Retrieve the optimal solution
-    solution = {}
-    if model.status == GRB.OPTIMAL:
-        for i in range(1, I+1):
-            for p in range(1, P+1):
-                for r in range(1, R+1):
-                    for t in range(1, T+1):
-                        solution[f"X_{i}_{p}_{r}_{t}"] = X_irpt[i, p, r, t].x
-
-
-    return solution
+shelves_df = pd.read_excel("./input/shelves.xlsx")
+shelves_df.index = np.arange(1, len(shelves_df) + 1)
 
 # Define the data
-I = 4  # Total number of crops // the fourth one is MAINTENANCE
-R = 4  # Total number of shelves
-P = 3  # Total number of towers
-T = 5  # Total time horizon (weeks)
-H = 2  # Total number of crop families
-theta  = {1: 2, 2: 3, 3: 2, 4:1}  # Cultivation time of each crop in weeks
-W = {1: [1, 2, 3, 4], 2:[2, 3, 4, 5], 3:[3, 4, 5, 6]}  # Cultivation area of each shelf in each tower
-A = {1: [1.5, 2.0, 2.5, 3.0, 3.5], 2: [2.0, 2.5, 3.0, 3.5, 4.0], 3: [3.0, 4.0, 6.0, 1.0, 4.0], 4:[0, 0, 0, 0, 0]}  # Price per kilogram of each crop at each week
-Q = {1:0.8, 2:0.9, 3:1, 4:0}  # Harvested quantity of each crop per cultivation area
-C = {1: [1, 2], 2: [3], 3: [4]} #Sun categories of the selves
-S = {1: [1], 2: [2], 3: [3]} #sun categories of the plants
-F = {1: [1, 2], 2: [3]} #Families of the plant
-Z = {1:5, 2:7, 3:4, 4:0}  # Average height of each crop
-G = {(1, 1): 10, (1, 2): 5, (1, 3): 8, (1, 4): 12, (2, 1): 7, (2, 2): 9, (2, 3): 6, (2, 4): 11, (3, 1): 9, (3, 2): 6, (3, 3): 10, (3, 4): 8}
+# Extract the required data from the dataframes
+I = crops_df.shape[0]  # Number of crops
+R = shelves_df.shape[0]  # Number of shelves
+
+P = 2  # Number of towers
+T = 10 # Time horizont
+
+theta = {}
+for i in range(1, I+1):
+    theta[i] = crops_df["Cultivation time"][i]
+
+H = crops_df['Family'].to_list()
+H = list(set(H))
+
+W = {}
+for p in range(1, P+1):
+    W[p] = shelves_df["harvested_area"].to_list()
+
+A = {}
+for i in range(1, I+1):
+    A[i] = {}
+    for t in range(1, 10):
+        A[i][t] = crops_df["Average Price in Summer (€/kg)"][i]
+    for t in range(10, T+1):
+        A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
+
+Q = {}
+for i in range(1, I+1):
+    Q[i] = crops_df["Harvested kg/m2 (Average)"][i]
+
+C = crops_df.groupby('Sunlight requirement').groups
+S = shelves_df.groupby('sun_categories').groups
+F = crops_df.groupby('Family').groups
+
+C_mapping = {'high': 1, 'medium': 2, 'low': 3}
+C = {C_mapping[key]: values for key, values in C.items()}
+
+# Mapping dictionary for S
+S_mapping = {'high': 1, 'medium': 2, 'low': 3}
+S = {S_mapping[key]: values for key, values in S.items()}
+
+Z = {}
+for i in range(1, I+1):
+    Z[i] = crops_df["Average Height (cm)"][i]
+
+G = {}
+for p in range(1, P+1):
+    for z in range(1, R+1):
+        G[p, z] = shelves_df["height"][z]
 
 # Generate the set of tuples (p1, r1, p2, r2)
-cartesian_product = [(p1, r1, p2, r2) for p1 in range(1, P+1) for r1 in range(1, R+1) for p2 in range(1, P+1) for r2 in range(1, R+1)]
+cartesian_product = [(p1, r1, p2, r2) for p1 in range(1, P + 1) for r1 in range(1, R + 1) for p2 in range(1, P + 1) for
+                     r2 in range(1, R + 1)]
 
 # Get the adjacent tuples
 adjacent_tuples = get_adjacent_tuples(cartesian_product)
-print(adjacent_tuples)
 
 # Solve the crop optimization problem
-solution = solve_crop_optimization(I, R, P, T, theta, W, A, Q, C, S, Z, G, F)
+solution = solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples)
 
 # Print the optimal solution
 for var, val in solution.items():
     print(f"{var} = {val}")
 
 generate_gantt_chart(solution, I, R, P, T, theta)
+plot_tower_content(solution, I, R, P, T, 10)

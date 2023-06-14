@@ -46,10 +46,10 @@ for p in range(1, P+1):
 A = {}
 for i in range(1, I+1):
     A[i] = {}
-    for t in range(1, 10):
+    for t in range(1, T+1):
         A[i][t] = crops_df["Average Price in Summer (€/kg)"][i]
-    for t in range(10, T+1):
-        A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
+    #for t in range(10, T+1):
+    #    A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
 
 Q = {}
 for i in range(1, I+1):
@@ -90,4 +90,4 @@ for var, val in solution.items():
     print(f"{var} = {val}")
 
 generate_gantt_chart(solution, I, R, P, T, theta)
-plot_tower_content(solution, I, R, P, T, 10)
+plot_tower_content(solution, I, R, P, T, 7)

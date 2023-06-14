@@ -16,8 +16,8 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
 
     # Set the objective function
     objective = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * A[i][t] * Q[i]
-                            for i in range(1, I + 1) for p in range(1, P + 1) for r in range(1, R + 1) for t in
-                            range(1, T + 1))
+                            for i in range(1, I + 1) for p in range(1, P + 1) for r in range(1, R + 1)
+                            for t in range(1, T + 1))
     model.setObjective(objective, GRB.MAXIMIZE)
 
     # Add constraint 1
@@ -29,7 +29,7 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
 
     for i in range(1, I + 1):
         lhs_3 = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * Q[i] for p in range(1, P + 1) for r in range(1, R + 1) for t in range(1, T+1))
-        model.addConstr(lhs_3 <= 40)
+        model.addConstr(lhs_3 <= 50)
 
     for t in range(1, T + 1):
         for p in range(1, P + 1):
@@ -67,15 +67,41 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
     # constraint 6:
     for h in F:
         for t in range(1, T + 1):
+            for p in range(1, P + 1):
+                for r in range(1, R + 1):
+                    lhs7 = gp.quicksum(
+                        X_irpt[i, p, r, t - z + T] if (t - z) <= 0 else X_irpt[i, p, r, t - z]
+                            for i in F[h]
+                            for z in range(0, theta[i]+1))
+                    model.addConstr(lhs7 <= 1)
+
+    '''#constraint 7
+    for h in F:
+        for t in range(1, T + 1):
             for (p1, r1, p2, r2) in adjacent_tuples:
-                lhs7 = gp.quicksum(
+                lhs8 = gp.quicksum(
                     X_irpt[i, p1, r1, t - z + T] + X_irpt[i, p2, r2, t - z + T] if (t - z) <= 0 else X_irpt[
                                                                                                          i, p1, r1, t - z] +
                                                                                                      X_irpt[
                                                                                                          i, p2, r2, t - z]
                     for i in F[h]
                     for z in range(0, theta[i]))
-                model.addConstr(lhs7 <= 1)
+                model.addConstr(lhs8 <= 1)'''
+
+
+    #constraint 8
+    for h in F:
+        for t in range(1, T + 1):
+            for p in range(1, P + 1):
+                for r in range(2, R + 1):
+                    lhs9 = gp.quicksum(
+                        X_irpt[i, p, r, t - z + T] + X_irpt[i, p, r - 1, t - z + T] if (t - z) <= 0 else X_irpt[
+                                                                                                             i, p, r, t - z] +
+                                                                                                         X_irpt[
+                                                                                                             i, p, r - 1, t - z]
+                        for i in F[h]
+                        for z in range(0, theta[i]))
+                    model.addConstr(lhs9 <= 1)
 
     # Optimize the model
     model.optimize()

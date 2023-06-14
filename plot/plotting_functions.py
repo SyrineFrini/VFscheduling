@@ -43,6 +43,9 @@ def plot_tower_content(solution, I, R, P, T, t):
 
         plt.show()
 
+import random
+import matplotlib.pyplot as plt
+
 def generate_gantt_chart(solution, I, R, P, T, theta):
     # Create a list of crops
     crops = ["Crop {}".format(i) for i in range(1, I + 1)]
@@ -65,7 +68,19 @@ def generate_gantt_chart(solution, I, R, P, T, theta):
                     if solution.get("X_{}_{}_{}_{}".format(i, p, r, t), 0) == 1:
                         crop_length = theta[i]
                         crop_start = ((t) % T)  # Adjust start time if rotation is needed
-                        tower_schedule[r - 1].append((crop_start, crop_length, crops[i - 1]))
+                        crop_end = crop_start + crop_length
+
+                        # Check if the crop exceeds the time horizon
+                        if crop_end > T:
+                            # First bar within the time horizon
+                            bar1_length = T - crop_start
+                            tower_schedule[r - 1].append((crop_start, bar1_length, crops[i - 1]))
+
+                            # Second bar starting from the beginning
+                            bar2_length = crop_length - bar1_length
+                            tower_schedule[r - 1].append((0, bar2_length, crops[i - 1]))
+                        else:
+                            tower_schedule[r - 1].append((crop_start, crop_length, crops[i - 1]))
 
         # Store the schedule for the current tower
         tower_schedules[p] = tower_schedule
@@ -86,4 +101,5 @@ def generate_gantt_chart(solution, I, R, P, T, theta):
             ax.set_title("Tower {}".format(p))
 
         plt.show()
+
 

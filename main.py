@@ -3,6 +3,7 @@ import numpy as np
 
 from model.model_MILP import solve_crop_optimization
 from model.heuristic_localsearch import solve_crop_optimization_heuristic
+from plot.plotting_functions import generate_tower_content
 from plot.plotting_functions import plot_tower_content
 from plot.plotting_functions import generate_gantt_chart
 
@@ -83,11 +84,19 @@ cartesian_product = [(p1, r1, p2, r2) for p1 in range(1, P + 1) for r1 in range(
 adjacent_tuples = get_adjacent_tuples(cartesian_product)
 
 # Solve the crop optimization problem
-solution = solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples)
+solution, constraint_times = solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples)
 
 # Print the optimal solution
 for var, val in solution.items():
     print(f"{var} = {val}")
 
+print(constraint_times)
+
 generate_gantt_chart(solution, I, R, P, T, theta)
-plot_tower_content(solution, I, R, P, T, 7)
+# Generate tower schedules and content
+tower_data = generate_tower_content(solution, I, R, P, T, theta)
+print(tower_data)
+
+# Plot the content of tower 1 at time step 5
+plot_tower_content(tower_data, 1, 5, I, R)
+

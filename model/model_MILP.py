@@ -1,5 +1,6 @@
 import gurobipy as gp
 from gurobipy import GRB
+import time
 
 def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples):
 
@@ -8,6 +9,7 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
 
     # Define the decision variables
     X_irpt = {}
+    constraint_times = {}
     for i in range(1, I + 1):
         for p in range(1, P + 1):
             for r in range(1, R + 1):
@@ -21,16 +23,17 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
     model.setObjective(objective, GRB.MAXIMIZE)
 
     # Add constraint 1
+    start_time = time.time()
     for i in range(1, I + 1):
         for t in range(1, T + 1):
             lhs = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] for p in range(1, P + 1) for r in range(1, R + 1))
             rhs = gp.quicksum(W[p][r - 1] for p in range(1, P + 1) for r in range(1, R + 1))
             model.addConstr(lhs <= rhs)
+    end_time = time.time()
+    constraint_times["Constraint 1"] = end_time - start_time
 
-    for i in range(1, I + 1):
-        lhs_3 = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * Q[i] for p in range(1, P + 1) for r in range(1, R + 1) for t in range(1, T+1))
-        model.addConstr(lhs_3 <= 50)
-
+    # Add constraint 2
+    start_time = time.time()
     for t in range(1, T + 1):
         for p in range(1, P + 1):
             for r in range(1, R + 1):
@@ -40,68 +43,93 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
                     for z in range(0, theta[i])
                 )
                 model.addConstr(lhs_1 <= 1)
+    end_time = time.time()
+    constraint_times["Constraint 2"] = end_time - start_time
 
-    # Add constraint 3: Maintenance period for each shelf
+    # Add constraint 3
+    start_time = time.time()
     for r in range(1, R + 1):
         for p in range(1, P + 1):
             lhs3 = gp.quicksum(X_irpt[I, p, r, t] for t in range(1, T + 1))
             model.addConstr(lhs3 == 1)
+    end_time = time.time()
+    constraint_times["Constraint 3"] = end_time - start_time
 
-    # Add Constraint 4: Sun categories
+    # Add Constraint 4
+    start_time = time.time()
     for t in range(1, T + 1):
         for p in range(1, P + 1):
-            lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[2]) * gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[3])
+            lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[2]) * gp.quicksum(
+                X_irpt[i, p, r, t] for i in C[1] for r in S[3])
             lhs5 = gp.quicksum(X_irpt[i, p, r, t] for i in C[2] for r in S[3])
             lhs6 = gp.quicksum(X_irpt[i, p, r, t] for i in C[3] for r in S[1])
             model.addConstr(lhs4 == 0)
             model.addConstr(lhs5 == 0)
             model.addConstr(lhs6 == 0)
+    end_time = time.time()
+    constraint_times["Constraint 4"] = end_time - start_time
 
-    # Constraint 5: shelves height
+    # Constraint 5
+    start_time = time.time()
     for i in range(1, I + 1):
         for t in range(1, T + 1):
             for p in range(1, P + 1):
                 for r in range(1, R + 1):
                     model.addConstr(Z[i] * X_irpt[i, p, r, t] <= G[p, r])
+    end_time = time.time()
+    constraint_times["Constraint 5"] = end_time - start_time
 
-    # constraint 6:
+    # Constraint 6
+    start_time = time.time()
     for h in F:
         for t in range(1, T + 1):
             for p in range(1, P + 1):
                 for r in range(1, R + 1):
                     lhs7 = gp.quicksum(
                         X_irpt[i, p, r, t - z + T] if (t - z) <= 0 else X_irpt[i, p, r, t - z]
-                            for i in F[h]
-                            for z in range(0, theta[i]+1))
+                        for i in F[h]
+                        for z in range(0, theta[i] + 1))
                     model.addConstr(lhs7 <= 1)
+    end_time = time.time()
+    constraint_times["Constraint 6"] = end_time - start_time
 
-    '''#constraint 7
-    for h in F:
+    # Constraint 7
+    start_time = time.time()
+    '''for h in F:
         for t in range(1, T + 1):
             for (p1, r1, p2, r2) in adjacent_tuples:
                 lhs8 = gp.quicksum(
                     X_irpt[i, p1, r1, t - z + T] + X_irpt[i, p2, r2, t - z + T] if (t - z) <= 0 else X_irpt[
-                                                                                                         i, p1, r1, t - z] +
-                                                                                                     X_irpt[
-                                                                                                         i, p2, r2, t - z]
+                        i, p1, r1, t - z] +
+                                                                                             X_irpt[
+                                                                                                 i, p2, r2, t - z]
                     for i in F[h]
                     for z in range(0, theta[i]))
-                model.addConstr(lhs8 <= 1)'''
+                model.addConstr(lhs8 <= 1)
+    end_time = time.time()'''
+    constraint_times["Constraint 7"] = end_time - start_time
 
-
-    #constraint 8
+    # Constraint 8
+    start_time = time.time()
     for h in F:
         for t in range(1, T + 1):
             for p in range(1, P + 1):
                 for r in range(2, R + 1):
                     lhs9 = gp.quicksum(
                         X_irpt[i, p, r, t - z + T] + X_irpt[i, p, r - 1, t - z + T] if (t - z) <= 0 else X_irpt[
-                                                                                                             i, p, r, t - z] +
-                                                                                                         X_irpt[
-                                                                                                             i, p, r - 1, t - z]
+                            i, p, r, t - z] +
+                                                                                                 X_irpt[
+                                                                                                     i, p, r - 1,
+                                                                                                     t - z]
                         for i in F[h]
                         for z in range(0, theta[i]))
                     model.addConstr(lhs9 <= 1)
+    end_time = time.time()
+    constraint_times["Constraint 8"] = end_time - start_time
+
+    for i in range(1, I + 1):
+        lhs_3 = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * Q[i] for p in range(1, P + 1) for r in range(1, R + 1) for t in range(1, T+1))
+        model.addConstr(lhs_3 <= 100)
 
     # Optimize the model
     model.optimize()
@@ -115,4 +143,4 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
                     for t in range(1, T + 1):
                         solution[f"X_{i}_{p}_{r}_{t}"] = X_irpt[i, p, r, t].x
 
-    return solution
+    return solution, constraint_times

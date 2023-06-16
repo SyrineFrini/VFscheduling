@@ -132,6 +132,7 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
         model.addConstr(lhs_3 <= 100)
 
     # Optimize the model
+    model.setParam('MIPGap', 0.02)
     model.optimize()
 
     # Retrieve the optimal solution

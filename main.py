@@ -6,6 +6,7 @@ from model.heuristic_localsearch import solve_crop_optimization_heuristic
 from plot.plotting_functions import generate_tower_content
 from plot.plotting_functions import plot_tower_content
 from plot.plotting_functions import generate_gantt_chart
+from plot.plotting_functions import animate_tower_content
 
 def get_adjacent_tuples(tuples):
     adjacent_tuples = []
@@ -31,7 +32,7 @@ I = crops_df.shape[0]  # Number of crops
 R = shelves_df.shape[0]  # Number of shelves
 
 P = 2  # Number of towers
-T = 10 # Time horizont
+T = 20 # Time horizont
 
 theta = {}
 for i in range(1, I+1):
@@ -99,4 +100,6 @@ print(tower_data)
 
 # Plot the content of tower 1 at time step 5
 plot_tower_content(tower_data, 1, 5, I, R)
+animate_tower_content(tower_data, 2, I, R)
+
 

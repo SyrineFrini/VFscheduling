@@ -101,8 +101,7 @@ generate_gantt_chart(solution, I, R, P, T, theta)
 # Generate tower schedules and content
 tower_data = generate_tower_content(solution, I, R, P, T, theta)
 # Plot the content of tower 1 at time step 5
-#plot_tower_content(tower_data, 1, 5, I, R)
-#animate_tower_content(tower_data, 2, I, R)
-plot_tower_content_with_height(tower_data, 2, 6, I, R, G, Z)
+plot_tower_content(tower_data, 1, 5, I, R)
+animate_tower_content(tower_data, 2, I, R)
 
 

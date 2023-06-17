@@ -17,7 +17,7 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
                     X_irpt[i, p, r, t] = model.addVar(vtype=GRB.BINARY, name=f"X_{i}_{p}_{r}_{t}")
 
     # Set the objective function
-    objective = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * A[i][t] * Q[i]
+    objective = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * ((t + theta[i] - 1) % T + 1) * Q[i]
                             for i in range(1, I + 1) for p in range(1, P + 1) for r in range(1, R + 1)
                             for t in range(1, T + 1))
     model.setObjective(objective, GRB.MAXIMIZE)
@@ -134,7 +134,8 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
 
 
     # Optimize the model
-    model.setParam('MIPGap', 0.02)
+    model.setParam('MIPGap', 0.005)
+    model.setParam('Timelimit', 300)
     model.optimize()
 
     # Retrieve the optimal solution

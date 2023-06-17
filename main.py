@@ -3,10 +3,12 @@ import numpy as np
 
 from model.model_MILP import solve_crop_optimization
 from model.heuristic_localsearch import solve_crop_optimization_heuristic
-from plot.plotting_functions import generate_tower_content
-from plot.plotting_functions import plot_tower_content
-from plot.plotting_functions import generate_gantt_chart
-from plot.plotting_functions import animate_tower_content
+
+from plot.plotting_tower_content import generate_tower_content
+from plot.plotting_tower_content import plot_tower_content
+from plot.plot_gantt import generate_gantt_chart
+from plot.plot_animation import animate_tower_content
+from plot.plot_with_height import plot_tower_content_with_height
 
 def get_adjacent_tuples(tuples):
     adjacent_tuples = []
@@ -32,7 +34,7 @@ I = crops_df.shape[0]  # Number of crops
 R = shelves_df.shape[0]  # Number of shelves
 
 P = 2  # Number of towers
-T = 20 # Time horizont
+T = 30 # Time horizont
 
 theta = {}
 for i in range(1, I+1):
@@ -57,16 +59,18 @@ Q = {}
 for i in range(1, I+1):
     Q[i] = crops_df["Harvested kg/m2 (Average)"][i]
 
+min_d = {}
+for i in range(1, I):
+    min_d = crops_df["min demand (kg)"][i]
+
+max_d = {}
+for i in range(1, I):
+    max_d = crops_df["max demand (kg)"][i]
+
+
 C = crops_df.groupby('Sunlight requirement').groups
 S = shelves_df.groupby('sun_categories').groups
 F = crops_df.groupby('Family').groups
-
-C_mapping = {'high': 1, 'medium': 2, 'low': 3}
-C = {C_mapping[key]: values for key, values in C.items()}
-
-# Mapping dictionary for S
-S_mapping = {'high': 1, 'medium': 2, 'low': 3}
-S = {S_mapping[key]: values for key, values in S.items()}
 
 Z = {}
 for i in range(1, I+1):
@@ -74,8 +78,8 @@ for i in range(1, I+1):
 
 G = {}
 for p in range(1, P+1):
-    for z in range(1, R+1):
-        G[p, z] = shelves_df["height"][z]
+    for r in range(1, R+1):
+        G[p, r] = shelves_df["height"][r]
 
 # Generate the set of tuples (p1, r1, p2, r2)
 cartesian_product = [(p1, r1, p2, r2) for p1 in range(1, P + 1) for r1 in range(1, R + 1) for p2 in range(1, P + 1) for
@@ -85,7 +89,7 @@ cartesian_product = [(p1, r1, p2, r2) for p1 in range(1, P + 1) for r1 in range(
 adjacent_tuples = get_adjacent_tuples(cartesian_product)
 
 # Solve the crop optimization problem
-solution, constraint_times = solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples)
+solution, constraint_times = solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples, min_d, max_d)
 
 # Print the optimal solution
 for var, val in solution.items():
@@ -96,10 +100,9 @@ print(constraint_times)
 generate_gantt_chart(solution, I, R, P, T, theta)
 # Generate tower schedules and content
 tower_data = generate_tower_content(solution, I, R, P, T, theta)
-print(tower_data)
-
 # Plot the content of tower 1 at time step 5
-plot_tower_content(tower_data, 1, 5, I, R)
-animate_tower_content(tower_data, 2, I, R)
+#plot_tower_content(tower_data, 1, 5, I, R)
+#animate_tower_content(tower_data, 2, I, R)
+plot_tower_content_with_height(tower_data, 2, 6, I, R, G, Z)
 
 

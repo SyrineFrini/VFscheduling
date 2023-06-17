@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import time
 
-def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples):
+def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjacent_tuples, min_d, max_d):
 
     # Create a new model
     model = gp.Model("crop_optimization")
@@ -59,10 +59,10 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
     start_time = time.time()
     for t in range(1, T + 1):
         for p in range(1, P + 1):
-            lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C[1] for r in S[2]) * gp.quicksum(
-                X_irpt[i, p, r, t] for i in C[1] for r in S[3])
-            lhs5 = gp.quicksum(X_irpt[i, p, r, t] for i in C[2] for r in S[3])
-            lhs6 = gp.quicksum(X_irpt[i, p, r, t] for i in C[3] for r in S[1])
+            lhs4 = gp.quicksum(X_irpt[i, p, r, t] for i in C["high"] for r in S["medium"]) * gp.quicksum(
+                X_irpt[i, p, r, t] for i in C["high"] for r in S["low"])
+            lhs5 = gp.quicksum(X_irpt[i, p, r, t] for i in C["medium"] for r in S["low"])
+            lhs6 = gp.quicksum(X_irpt[i, p, r, t] for i in C["low"] for r in S["high"])
             model.addConstr(lhs4 == 0)
             model.addConstr(lhs5 == 0)
             model.addConstr(lhs6 == 0)
@@ -127,9 +127,11 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
     end_time = time.time()
     constraint_times["Constraint 8"] = end_time - start_time
 
-    for i in range(1, I + 1):
-        lhs_3 = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * Q[i] for p in range(1, P + 1) for r in range(1, R + 1) for t in range(1, T+1))
-        model.addConstr(lhs_3 <= 100)
+    for i in range(1, I):
+        lhs10 = gp.quicksum(X_irpt[i, p, r, t] * W[p][r - 1] * Q[i] for p in range(1, P + 1) for r in range(1, R + 1) for t in range(1, T+1))
+        model.addConstr(lhs10 <= max_d)
+        model.addConstr(lhs10 >= min_d)
+
 
     # Optimize the model
     model.setParam('MIPGap', 0.02)

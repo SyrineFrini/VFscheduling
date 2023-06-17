@@ -42,5 +42,7 @@ def animate_tower_content(tower_schedules, tower_id, I, R):
         ax.set_title("Tower {} - Time Step {}".format(tower_id, step + 1))
         ax.grid(True, axis='x')
 
-    ani = animation.FuncAnimation(fig, update_content, frames=T, interval=1000, repeat=True)
+    ani = animation.FuncAnimation(fig, update_content, frames=T, interval=200, repeat=True)
+    ani.save('animation_3.gif', writer='pillow')
+
     plt.show()

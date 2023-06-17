@@ -40,11 +40,9 @@ def generate_tower_content(solution, I, R, P, T, theta):
 def plot_tower_content(tower_schedules, tower_id, time_step, I, R):
     # Get the schedule for the specified tower
     schedule = tower_schedules[tower_id]
-    print(schedule)
 
     # Get the content at the specified time step for all shelves
     content_at_time = [shelf[time_step - 1] if time_step <= len(shelf) and len(shelf) > 0 else None for shelf in schedule]  # Adjusting for 0-based indexing
-    print(content_at_time)
     # Create a list of crops
     crops = ["Crop {}".format(i) if i != 19 else "Maintenance" for i in range(1, I + 1)]
 
@@ -55,7 +53,6 @@ def plot_tower_content(tower_schedules, tower_id, time_step, I, R):
 
     for r in range(R):
         crop_index = content_at_time[r]
-        print(crop_index)# Adjusting for 0-based indexing
         if crop_index >= 0:
             if crop_index == 19:  # Crop index 19 (19 - 1 = 18) corresponds to "Maintenance"
                 crop_name = "Maintenance"

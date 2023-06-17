@@ -33,8 +33,8 @@ shelves_df.index = np.arange(1, len(shelves_df) + 1)
 I = crops_df.shape[0]  # Number of crops
 R = shelves_df.shape[0]  # Number of shelves
 
-P = 2  # Number of towers
-T = 30 # Time horizont
+P = 3  # Number of towers
+T = 52 # Time horizont
 
 theta = {}
 for i in range(1, I+1):
@@ -50,10 +50,10 @@ for p in range(1, P+1):
 A = {}
 for i in range(1, I+1):
     A[i] = {}
-    for t in range(1, T+1):
+    for t in range(1, 25):
+        A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
+    for t in range(25, T+1):
         A[i][t] = crops_df["Average Price in Summer (€/kg)"][i]
-    #for t in range(10, T+1):
-    #    A[i][t] = crops_df["Average Price in Winter (€/kg)"][i]
 
 Q = {}
 for i in range(1, I+1):
@@ -101,7 +101,7 @@ generate_gantt_chart(solution, I, R, P, T, theta)
 # Generate tower schedules and content
 tower_data = generate_tower_content(solution, I, R, P, T, theta)
 # Plot the content of tower 1 at time step 5
-plot_tower_content(tower_data, 1, 5, I, R)
-animate_tower_content(tower_data, 2, I, R)
+plot_tower_content(tower_data, 1, 10, I, R)
+animate_tower_content(tower_data, 3, I, R)
 
 

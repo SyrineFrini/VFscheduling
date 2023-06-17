@@ -134,7 +134,7 @@ def solve_crop_optimization(I, R, P, T, H, theta, W, A, Q, C, S, Z, G, F, adjace
 
 
     # Optimize the model
-    model.setParam('MIPGap', 0.005)
+    model.setParam('MIPGap', 0.02)
     model.setParam('Timelimit', 300)
     model.optimize()
 

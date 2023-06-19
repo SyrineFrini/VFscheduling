@@ -3,7 +3,6 @@ import numpy as np
 
 from model.model_MILP import solve_crop_optimization
 from model.heuristic_localsearch import solve_crop_optimization_heuristic
-
 from plot.plotting_tower_content import generate_tower_content
 from plot.plotting_tower_content import plot_tower_content
 from plot.plot_gantt import generate_gantt_chart
@@ -33,8 +32,8 @@ shelves_df.index = np.arange(1, len(shelves_df) + 1)
 I = crops_df.shape[0]  # Number of crops
 R = shelves_df.shape[0]  # Number of shelves
 
-P = 3  # Number of towers
-T = 52 # Time horizont
+P = 2  # Number of towers
+T = 20 # Time horizont
 
 theta = {}
 for i in range(1, I+1):
@@ -102,6 +101,6 @@ generate_gantt_chart(solution, I, R, P, T, theta)
 tower_data = generate_tower_content(solution, I, R, P, T, theta)
 # Plot the content of tower 1 at time step 5
 plot_tower_content(tower_data, 1, 10, I, R)
-animate_tower_content(tower_data, 3, I, R)
+animate_tower_content(tower_data, 2, I, R)
 
 
